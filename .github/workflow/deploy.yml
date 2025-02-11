@@ -1,4 +1,4 @@
-name: CI/CD Pipeline
+name: CD Pipeline
 
 on:
   push:
@@ -9,18 +9,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+    - name: Checkout repository
+      uses: actions/checkout@v3
 
-      - name: Install Fly.io CLI
-        run: |
-          curl -fsSL https://fly.io/install.sh | sh
-
-      - name: Authenticate with Fly.io
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: |
-          fly auth token $FLY_API_TOKEN
-
-      - name: Deploy FastAPI + Nginx
-        run: |
-          fly deploy
+    - name: Deploy to AWS Server
+      uses: appleboy/ssh-action@v0.1.10
+      with:
+        host: ${{ secrets.AWS_HOST }}
+        username: ${{ secrets.AWS_USER }}
+        key: ${{ secrets.AWS_PRIVATE_KEY }}
+        script: |
+          cd /home/ec2-user/fastapi-app
+          git pull origin main
+          source fastapi-env/bin/activate
+          pip install -r requirements.txt
+          sudo cat /etc/nginx/conf.d/fastapi.conf
+          sudo systemctl restart nginx
+          sudo systemctl restart fastapi
